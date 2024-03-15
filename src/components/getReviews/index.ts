@@ -12,7 +12,7 @@ export interface IReview {
 }
 
 interface TokenInsertion {
-  insertToken(url: string, token: string): string
+  insertToken(url: string, token: string | null): string
 }
 
 interface ResponseParser {
@@ -46,7 +46,7 @@ class GoogleReviewService {
       name: string
       latitude: DoubleRange
       longitude: DoubleRange
-    }
+    } | null = null
 
     try {
       do {
