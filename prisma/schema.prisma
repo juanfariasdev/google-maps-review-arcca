@@ -12,3 +12,62 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id       String @id @default(uuid())
+  name     String
+  email    String
+  password String
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Establishment {
+  id        String  @id @default(uuid())
+  name      String
+  link      String
+  latitude  Decimal
+  longitude Decimal
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  reviews Review[]
+
+  @@map("establishments")
+}
+
+model Customer {
+  id       String  @id @default(uuid())
+  name     String
+  imageUrl String? @map("image_url")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  reviews Review[]
+
+  @@map("customers")
+}
+
+model Review {
+  id              String  @id @default(uuid())
+  rating          Int
+  approximateDate String  @map("approximate_date")
+  text            String?
+  reply           String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  establishmentId String?        @map("establishment_id")
+  establishment   Establishment? @relation(fields: [establishmentId], references: [id])
+
+  @@map("reviews")
+}
