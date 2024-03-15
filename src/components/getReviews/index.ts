@@ -4,7 +4,9 @@ import axios, { AxiosResponse } from 'axios'
 export interface IReview {
   rating: number
   customerId: string
+  customerImageUrl: string
   customerName: string
+  reviewDate: string
   reviewText: string
   establishmentReply: string
 }
@@ -40,6 +42,11 @@ class GoogleReviewService {
   async fetchReviews(url: string): Promise<IReview[]> {
     const reviews: IReview[] = []
     let token: string | null = null
+    let establishment: {
+      name: string
+      latitude: DoubleRange
+      longitude: DoubleRange
+    }
 
     try {
       do {
@@ -64,10 +71,25 @@ class GoogleReviewService {
 
         for (const reviewItem of reviewArray) {
           const [item] = reviewItem
+
+          if (!establishment?.name) {
+            const location = item[2][2][0][1][8][0]
+
+            establishment = {
+              name: item[2][2][0][1][21][3][7][0],
+              latitude: location[2],
+              longitude: location[1],
+            }
+            console.log(establishment)
+          }
+          const customer = item[1][4][0]
+
           const review: IReview = {
             rating: Number(item[2][0][0]),
-            customerId: item[1][4][0][13],
-            customerName: item[1][4][0][4],
+            customerId: customer[13],
+            customerName: customer[4],
+            customerImageUrl: customer[3],
+            reviewDate: item[1][6],
             // Destructure with optional chaining and nullish coalescing
             reviewText:
               item[2]?.[15]?.[0][0]
