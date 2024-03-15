@@ -1,12 +1,13 @@
 import { Controller, Get } from '@nestjs/common'
 import { AppService } from './app.service'
+import { IReview } from './components/getReviews'
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello()
+  getReviews(): Promise<IReview[]> {
+    return this.appService.getReviews()
   }
 }
