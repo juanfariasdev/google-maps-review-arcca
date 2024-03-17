@@ -1,0 +1,427 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ServerlessDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ServerlessDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ApiLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/google-review-arcca-dev-api",
+        "RetentionInDays": 1
+      }
+    },
+    "IamRoleLambdaExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "google-review-arcca",
+                  "dev",
+                  "lambda"
+                ]
+              ]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup",
+                    "logs:TagResource"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/google-review-arcca-dev*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/google-review-arcca-dev*:*:*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Path": "/",
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "google-review-arcca",
+              "dev",
+              {
+                "Ref": "AWS::Region"
+              },
+              "lambdaRole"
+            ]
+          ]
+        }
+      }
+    },
+    "EnterpriseLogAccessIamRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "arn:aws:iam::802587217904:root"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": "ServerlessEnterprise-473f59df-90d0-46ab-9c6e-cf096af32880"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "LogFilterAccess",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:FilterLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ApiLogGroup",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ApiLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/google-review-arcca/dev/1710710300766-2024-03-17T21:18:20.766Z/google-review-arcca.zip"
+        },
+        "Handler": "s_api.handler",
+        "Runtime": "nodejs16.x",
+        "FunctionName": "google-review-arcca-dev-api",
+        "MemorySize": 128,
+        "Timeout": 15,
+        "Architectures": [
+          "arm64"
+        ],
+        "Environment": {
+          "Variables": {
+            "DATABASE_URL": "postgresql://postgres:docker@localhost:5432/arcca-google?schema=public",
+            "JWT_PRIVATE_KEY": "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBanA3TCtzNEdBMzNQNzVBNDlMRTUrZU80S3JicXBldmVyNjllUXhPOTZkU05mTmhzCkRlTmFqZ0xxTXdHTUEwVVdWV211MVc0UWQ0VGlNZERjd1Z5bElCNTFFbkR3Y0ExVW9DeDFlK0hLQ3EwUGtQOG8Kd0pFUi8wVHMrRkhnOFh3WE16QzVoaTNHb09vR05MdHQ4MG55NEM5Wkgrc3AxdHVKYzA0RGl5S2RjUmdoeURpTgpacSt5eXNaYnZoYzJTRFB4SWJ4TXRiei9KSlZkWGFSZ29tcVdVT2kvUmZVL2NUUTk0czBRcko4MDJuMXZWNkpjClREZ09Jb0ZYYmltSVoyd1ZGZEdXNG11WnZUaDY0MnRaMmVlNUlpdXo1eTc3Uk9OKzF3R3VaYktJcVZtTFh0U2IKbUQ4UTFKd1B4YytTVDNra0tvZEg1c2h1R2lzaE5PZWcvMkR5blFJREFRQUJBb0lCQUgxaGJ6UHprV2ZhWUVaYwpoU1hnOUhZU1V5TUNJZkZ5RmhoZlZNQWxoKzBjbHJKdDFUaTBhalMwclUzZ0MwWUlvNlM5UHgyVklGYmlkTFNVCnlLNFpFM1hVTU5uZ2ZoQVVPQlNFWVZoaVhHdmNUdllLeTduWEQzcGFEdllUald6ZXljcVFDRm5Fdm4xU245Z1YKK29oS3Q0R05QbzRJQUlWS0JXRmY4VStOUTlwYW81dnJYSDhTWkNpRkY5NnF6V1ZhRTArYWFaZUJQb2orY3d3UwpwNFFOcVdtVG1PYUhPY1VtS2srclljSUh4dUhwMHhYbk5aYnN5VkJTSDVZWVRtNHJmMzBHVldBZ3B3TnpDQTJ4CjB4eEwweUozVUx6dTEyMmdOT1ZiK3UzakFaUlFLdmtqRElyVTJhanJFNUx3a2VDa0hTY2JvczVUcTMvNTVybVcKYjFlREpVRUNnWUVBN2lNRDZ4Sis1dzlZRmNEQXlCdlZ6Ti81VWlyMmZabVhUczZyVHVPTzFJK2FIQXJoTHd6bApNMjBiTmIvQ3ZwWlYrK29oUnFzejRUeS8yOWw1V1JjUjBSTFJ0YVpyeU1SZjROVStJMmVTaXAwYXRmUEwvSm9ICnZHYUhCaHVSSEN1MDY2M3I3MTFVYWdpUWEwd05GZ0o2cy9qNFd3ZTAwd2NnZkJEdXRRN0ZoWkVDZ1lFQW1WR1AKazlRWWQ4SkVra2dySVZmL3JLVWZwK2tmK2ROOEZnbmwxZzVEZk42bzFHMGhwbmlZMnVyVWZqN05TZDJuT05sQgowSGYyamo2M3BDb3lTVkJhV09BRXNLdndXNE5ueG8wNmY3ejBIdUh3SHFGSDg0czE1TXY2OUwzS0pHa04wbUR6CnFybHlSSE5LdjVEM1kxMDFIa2F5S2xYbXU5aGU0ZHNhQ3M3QVprMENnWUVBbDd1YjNZWjFjWWhuV2NUdGtST2IKVU9WTkdUdml2dmpFWGlSMUp0ajd3eGlVMjFWYlVmMW5kVE1KNlY5OEdLLzFyWVByRy9vdUhrLzA5NEpFUGEzagpYbElkYVI3WEFwK05iOWF2dHlOaFRnejRYZ012Y0k0OGE2RHdXOFhvMmdoSFNQd1NudnZhczQwdGFCQ1hMZlQ2CmRmNG5VT2xDSUV3a09La1pVQ2hQVnVFQ2dZQkNqVVRseG90WWNOdVRKQUNVMkw0REV5cEttTWRvaW9TeWpGbFkKTVpqWiswME42TkZTa2NiSVFHYzg1Y1gyNm1CTUxRS0VtNDVLOEs2R2RFcWZ5R0Z2Y3M2V1lneFRyUmErK1U4TApZOW9VRGI5TmpIVFBJdjZoOG1sZEU0VkxpTTZYSTc2aHZSMzgySTc1Mk5PS0xrdUFlTytkc093WFhqVFJsV29ZCmh1YTlnUUtCZ0NKWW9BVG00N1NKYXFFelNaWGhuTUZKOXVTTE9LNUNWaWNVWURyTTFYaHhzcEVBK0JraWpQMmQKZGRvWGNZZFhrY2hvNy9IZ1o3M1QvVFd2MDl6ZjhwM3FQaTFvN1ZnQkVtUE9TRHRFcTFBeUl3b2ZjZXR6czRUZApXMHZFWDdpYkpJR3NZSy9rTDJramZBYk10NUFVMGp6TWQ0UXF5TFBtWVplZjFueEd1YzAzCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0t",
+            "JWT_PUBLIC_KEY": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFqcDdMK3M0R0EzM1A3NUE0OUxFNQorZU80S3JicXBldmVyNjllUXhPOTZkU05mTmhzRGVOYWpnTHFNd0dNQTBVV1ZXbXUxVzRRZDRUaU1kRGN3VnlsCklCNTFFbkR3Y0ExVW9DeDFlK0hLQ3EwUGtQOG93SkVSLzBUcytGSGc4WHdYTXpDNWhpM0dvT29HTkx0dDgwbnkKNEM5Wkgrc3AxdHVKYzA0RGl5S2RjUmdoeURpTlpxK3l5c1pidmhjMlNEUHhJYnhNdGJ6L0pKVmRYYVJnb21xVwpVT2kvUmZVL2NUUTk0czBRcko4MDJuMXZWNkpjVERnT0lvRlhiaW1JWjJ3VkZkR1c0bXVadlRoNjQydFoyZWU1CklpdXo1eTc3Uk9OKzF3R3VaYktJcVZtTFh0U2JtRDhRMUp3UHhjK1NUM2trS29kSDVzaHVHaXNoTk9lZy8yRHkKblFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ApiLogGroup"
+      ]
+    },
+    "ApiLambdaVersionv2McpYfQvmHnYL4lD6G3LMXvt1q8q6S5Gd7Ghz6sZog": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ApiLambdaFunction"
+        },
+        "CodeSha256": "VIfbeH7t+fIUnj1TRFdcaMi5a/PTNaKt8eejknpOa3Q="
+      }
+    },
+    "HttpApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "dev-google-review-arcca",
+        "ProtocolType": "HTTP"
+      }
+    },
+    "HttpApiLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/http-api/google-review-arcca-dev",
+        "RetentionInDays": 1
+      }
+    },
+    "HttpApiStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "StageName": "$default",
+        "AutoDeploy": true,
+        "DefaultRouteSettings": {
+          "DetailedMetricsEnabled": false
+        },
+        "AccessLogSettings": {
+          "DestinationArn": {
+            "Fn::GetAtt": [
+              "HttpApiLogGroup",
+              "Arn"
+            ]
+          },
+          "Format": "{\"requestTime\":\"$context.requestTime\",\"requestId\":\"$context.requestId\",\"apiId\":\"$context.apiId\",\"resourcePath\":\"$context.routeKey\",\"path\":\"$context.path\",\"httpMethod\":\"$context.httpMethod\",\"stage\":\"$context.stage\",\"status\":\"$context.status\",\"integrationStatus\":\"$context.integrationStatus\",\"integrationLatency\":\"$context.integrationLatency\",\"responseLatency\":\"$context.responseLatency\",\"responseLength\":\"$context.responseLength\",\"errorMessage\":\"$context.error.message\",\"format\":\"SLS_HTTP_API_LOG\",\"version\":\"1.0.0\"}"
+        }
+      },
+      "DependsOn": "HttpApiLogGroup"
+    },
+    "ApiLambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationApi": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ApiLambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRouteAnyProxyVar": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "ANY /{proxy+}",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationApi"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationApi"
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      },
+      "Export": {
+        "Name": "sls-google-review-arcca-dev-ServerlessDeploymentBucketName"
+      }
+    },
+    "EnterpriseLogAccessIamRole": {
+      "Value": {
+        "Fn::GetAtt": [
+          "EnterpriseLogAccessIamRole",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "sls-google-review-arcca-dev-EnterpriseLogAccessIamRole"
+      }
+    },
+    "ApiLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "ApiLambdaVersionv2McpYfQvmHnYL4lD6G3LMXvt1q8q6S5Gd7Ghz6sZog"
+      },
+      "Export": {
+        "Name": "sls-google-review-arcca-dev-ApiLambdaFunctionQualifiedArn"
+      }
+    },
+    "HttpApiId": {
+      "Description": "Id of the HTTP API",
+      "Value": {
+        "Ref": "HttpApi"
+      },
+      "Export": {
+        "Name": "sls-google-review-arcca-dev-HttpApiId"
+      }
+    },
+    "HttpApiUrl": {
+      "Description": "URL of the HTTP API",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "HttpApi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            }
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "sls-google-review-arcca-dev-HttpApiUrl"
+      }
+    }
+  }
+}

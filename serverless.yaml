@@ -1,0 +1,43 @@
+org: juanfariasdev
+app: google-review-arcca
+service: google-review-arcca
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+package:
+  exclude:
+    - "**/node_modules/aws-sdk/**" # included on Lambda.
+
+
+plugins:
+  - serverless-jetpack
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  architecture: arm64
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-south-1'}
+  memorySize: 128
+  logRetentionInDays: 1
+  timeout: 15
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    JWT_PRIVATE_KEY: ${env:JWT_PRIVATE_KEY}
+    JWT_PUBLIC_KEY: ${env:JWT_PUBLIC_KEY}
+
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    events:
+      - httpApi:
+          method: any
+          path: /{proxy+}
+
+
+
+
