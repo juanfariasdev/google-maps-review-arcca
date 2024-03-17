@@ -4,9 +4,11 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  UseGuards,
   UsePipes,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { IReviewReturn, getReviewsByUrl } from 'src/components/getReviews'
 import { ZodValidationPipe } from 'src/pipes/zod-validation-pipe'
 import { PrismaService } from 'src/prisma/prisma.services'
@@ -28,6 +30,7 @@ type EstablishmentData = {
 type CreateReviewBodySchema = z.infer<typeof CreateReviewSchema>
 
 @Controller('/reviews')
+@UseGuards(JwtAuthGuard)
 export class CreateReviewController {
   constructor(private prisma: PrismaService) {}
 
