@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common'
 import { AppService } from './app.service'
-import { IReview } from './components/getReviews'
+import { IReturnGetViews } from './components/getReviews'
 import { PrismaService } from './prisma/prisma.services'
 
 @Controller()
@@ -16,7 +16,7 @@ export class AppController {
   }
 
   @Get()
-  getReviews(): Promise<IReview[]> {
+  getReviews(): Promise<IReturnGetViews> {
     return this.appService.getReviews()
   }
 }

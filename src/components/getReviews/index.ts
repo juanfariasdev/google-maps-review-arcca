@@ -1,14 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Prisma } from '@prisma/client'
 import axios, { AxiosResponse } from 'axios'
 
-export interface IReview {
-  rating: number
-  customerId: string
-  customerImageUrl: string
-  customerName: string
-  reviewDate: string
-  reviewText: string
-  establishmentReply: string
+// Interfaces
+export interface IReviewReturn extends Prisma.ReviewCreateInput {}
+
+interface IEstablishiment {
+  id: string
+  link: string
+  name: string
+  latitude: number
+  longitude: number
+}
+
+export interface IReturnGetViews {
+  establishment?: IEstablishiment | null
+  reviews?: IReviewReturn[]
 }
 
 interface TokenInsertion {
@@ -19,6 +26,7 @@ interface ResponseParser {
   parseResponse(item: string): JSON[]
 }
 
+// Classes
 class TokenInserter implements TokenInsertion {
   insertToken(url: string, token: string): string {
     const index = url.indexOf('!2s') + 3
@@ -33,26 +41,23 @@ class JsonResponseParser implements ResponseParser {
   }
 }
 
+// Serviço de Avaliações do Google
 class GoogleReviewService {
   constructor(
     private tokenInserter: TokenInsertion,
     private responseParser: ResponseParser,
   ) {}
 
-  async fetchReviews(url: string): Promise<IReview[]> {
-    const reviews: IReview[] = []
+  async fetchReviews(url: string): Promise<IReturnGetViews> {
     let token: string | null = null
-    let establishment: {
-      name: string
-      latitude: DoubleRange
-      longitude: DoubleRange
-    } | null = null
+    const reviews: IReviewReturn[] = []
+    let establishment: IEstablishiment | null = null
 
     try {
       do {
         const paginatedQuery = this.tokenInserter.insertToken(url, token)
 
-        // Handle potential network errors
+        // Lidar com erros de rede potenciais
         const response: AxiosResponse<any> = await axios.get(paginatedQuery)
 
         const structuredResponse: any[] = this.responseParser.parseResponse(
@@ -64,9 +69,11 @@ class GoogleReviewService {
         const [, nextToken, reviewArray] = structuredResponse
         token = nextToken
 
-        // Check for issues in the response structure
+        // Verificar problemas na estrutura da resposta
         if (!Array.isArray(reviewArray)) {
-          throw new Error('Invalid response format: review array missing')
+          throw new Error(
+            'Formato de resposta inválido: array de avaliações ausente',
+          )
         }
 
         for (const reviewItem of reviewArray) {
@@ -76,6 +83,8 @@ class GoogleReviewService {
             const location = item[2][2][0][1][8][0]
 
             establishment = {
+              id: '2393beb4-8d1d-445d-a158-a119bfc982d4',
+              link: 'https://google.com',
               name: item[2][2][0][1][21][3][7][0],
               latitude: location[2],
               longitude: location[1],
@@ -84,40 +93,58 @@ class GoogleReviewService {
           }
           const customer = item[1][4][0]
 
-          const review: IReview = {
+          const review: IReviewReturn = {
             rating: Number(item[2][0][0]),
-            customerId: customer[13],
-            customerName: customer[4],
-            customerImageUrl: customer[3],
-            reviewDate: item[1][6],
-            // Destructure with optional chaining and nullish coalescing
-            reviewText:
+            approximateDate: item[1][6],
+            text:
               item[2]?.[15]?.[0][0]
                 ?.replaceAll(/\n$/g, '')
                 .replaceAll(/\n/g, ' ') ?? null,
-            establishmentReply:
+            reply:
               item[3]?.[14]?.[0][0]
                 ?.replaceAll(/\n$/g, '')
                 .replaceAll(/\n/g, ' ') ?? null,
+                establishment: {
+                  connect: {
+                  id: establishment.id
+                  },
+                },
+
+            customer: {
+              connectOrCreate: {
+                create: {
+                  id: customer[13],
+                  name: customer[4],
+                  imageUrl: customer[3],
+                },
+                where: {
+                  id: customer[13],
+                },
+              },
+            },
           }
 
           reviews.push(review)
         }
       } while (token)
     } catch (error) {
-      // Handle all errors including network errors from axios
-      console.error('Error fetching reviews:', error)
+      // Lidar com todos os erros, incluindo erros de rede do axios
+      console.error('Erro ao buscar avaliações:', error)
 
-      // Optionally return an empty array or handle the error differently based on your application logic
-      return []
+      // Opcionalmente, retornar um array vazio ou lidar com o erro de forma diferente com base na lógica da sua aplicação
+      return {}
     }
 
     console.log('Avaliações obtidas:', reviews.length)
-    return reviews
+    return {
+      establishment,
+      reviews,
+    }
   }
 }
 
-export async function getReviewsByUrl(url: string): Promise<IReview[]> {
+// Função para obter avaliações por URL
+export async function getReviewsByUrl(url: string): Promise<IReturnGetViews> {
   const tokenInserter = new TokenInserter()
   const responseParser = new JsonResponseParser()
   const reviewService = new GoogleReviewService(tokenInserter, responseParser)
