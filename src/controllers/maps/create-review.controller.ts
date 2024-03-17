@@ -1,10 +1,10 @@
 import {
-    Body,
-    Controller,
-    HttpException,
-    HttpStatus,
-    Post,
-    UsePipes,
+  Body,
+  Controller,
+  HttpException,
+  HttpStatus,
+  Post,
+  UsePipes,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { IReviewReturn, getReviewsByUrl } from 'src/components/getReviews'
@@ -13,7 +13,7 @@ import { PrismaService } from 'src/prisma/prisma.services'
 import { z } from 'zod'
 
 const CreateReviewSchema = z.object({
-    url: z.string().url()
+  url: z.string().url(),
 })
 
 // Definindo o tipo para os dados de um estabelecimento
@@ -35,7 +35,6 @@ export class CreateReviewController {
   @UsePipes(new ZodValidationPipe(CreateReviewSchema))
   async handle(@Body() body: CreateReviewBodySchema): Promise<boolean> {
     const { url } = CreateReviewSchema.parse(body)
-
 
     try {
       const { establishment, reviews } = await getReviewsByUrl(url)
@@ -61,9 +60,7 @@ export class CreateReviewController {
     }
   }
 
-  private async createOrUpdateEstablishment(
-    establishment: EstablishmentData,
-  ){
+  private async createOrUpdateEstablishment(establishment: EstablishmentData) {
     const { id, name, link, latitude, longitude } = establishment
 
     return this.prisma.establishment.upsert({
@@ -99,16 +96,15 @@ export class CreateReviewController {
         (item) => item.customerId === review.customer.connectOrCreate?.where.id,
       )
 
-      if(!findReview || !findReview.id){
-      await this.prisma.review.create({
-        data: {...review},
-        
-      },)}
-      else{
+      if (!findReview || !findReview.id) {
+        await this.prisma.review.create({
+          data: { ...review },
+        })
+      } else {
         await this.prisma.review.update({
-            where: { id: findReview.id },
-            data: review,
-          })
+          where: { id: findReview.id },
+          data: review,
+        })
       }
     }
   }

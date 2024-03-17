@@ -104,11 +104,11 @@ class GoogleReviewService {
               item[3]?.[14]?.[0][0]
                 ?.replaceAll(/\n$/g, '')
                 .replaceAll(/\n/g, ' ') ?? null,
-                establishment: {
-                  connect: {
-                  id: establishment.id
-                  },
-                },
+            establishment: {
+              connect: {
+                id: establishment.id,
+              },
+            },
 
             customer: {
               connectOrCreate: {
