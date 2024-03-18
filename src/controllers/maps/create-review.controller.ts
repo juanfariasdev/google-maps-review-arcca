@@ -43,7 +43,7 @@ export class CreateReviewController {
 
     try {
       const { establishment: establishmentExtras, reviews } =
-        await getReviewsByUrl(establishment.link, establishmentId)
+        await getReviewsByUrl(establishment.linkReview, establishmentId)
 
       if (
         establishmentExtras &&

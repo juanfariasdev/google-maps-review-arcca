@@ -51,8 +51,8 @@ export class CreateEstablishmentController {
 
       const establishment = await this.prisma.establishment.upsert({
         where: { id },
-        create: { id, name, link },
-        update: { name, link },
+        create: { id, name, linkMap: url, linkReview: link },
+        update: { name, linkMap: url, linkReview: link },
       })
 
       return establishment
