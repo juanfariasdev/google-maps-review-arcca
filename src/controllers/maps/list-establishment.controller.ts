@@ -20,7 +20,11 @@ export class ListAllEstablishmentController {
     try {
       return await this.prisma.establishment.findMany({
         include: {
-          reviews: true,
+          reviews: {
+            include: {
+              customer: true,
+            },
+          },
         },
       })
     } catch (error) {

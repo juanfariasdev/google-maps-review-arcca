@@ -55,7 +55,3 @@ Authorization: Bearer {{authToken}}
 GET {{baseUrl}}/establishment
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
-
-{
-   "url": "https://maps.app.goo.gl/EXYzRfVRyteYLedt6"
-}

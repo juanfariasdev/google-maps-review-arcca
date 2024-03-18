@@ -41,7 +41,7 @@ interface IMap {
   link: string
 }
 
-export async function getMap(url: string): Promise<IMap | null> {
+export async function getEstablishment(url: string): Promise<IMap | null> {
   const requests: any[] = []
 
   try {

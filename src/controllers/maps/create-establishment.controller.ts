@@ -9,8 +9,7 @@ import {
 } from '@nestjs/common'
 import { Establishment } from '@prisma/client'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
-import { getMap } from 'src/components/getMap'
-
+import { getEstablishment } from 'src/components/getEstablishment'
 import { ZodValidationPipe } from 'src/pipes/zod-validation-pipe'
 import { PrismaService } from 'src/prisma/prisma.services'
 import { z } from 'zod'
@@ -34,25 +33,29 @@ export class CreateEstablishmentController {
     const { url } = CreateEstablishmentSchema.parse(body)
 
     try {
-      const getInfoFromLink = await getMap(url)
+      const getInfoFromLink = await getEstablishment(url)
 
       if (
         !getInfoFromLink ||
-        !getInfoFromLink?.id ||
-        !getInfoFromLink?.link ||
-        !getInfoFromLink?.name
+        !getInfoFromLink.id ||
+        !getInfoFromLink.link ||
+        !getInfoFromLink.name
       ) {
         throw new HttpException(
           'Estabelecimento não encontrado.',
           HttpStatus.NOT_FOUND,
         )
       }
+
       const { id, name, link } = getInfoFromLink
-      return await this.prisma.establishment.upsert({
+
+      const establishment = await this.prisma.establishment.upsert({
         where: { id },
         create: { id, name, link },
         update: { name, link },
       })
+
+      return establishment
     } catch (error) {
       console.log(error)
       throw new HttpException(

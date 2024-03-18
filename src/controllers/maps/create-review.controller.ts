@@ -7,7 +7,7 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Establishment, Prisma } from '@prisma/client'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { IReviewReturn, getReviewsByUrl } from 'src/components/getReviews'
 import { ZodValidationPipe } from 'src/pipes/zod-validation-pipe'
@@ -40,20 +40,23 @@ export class CreateReviewController {
         HttpStatus.NOT_FOUND,
       )
     }
+
     try {
       const { establishment: establishmentExtras, reviews } =
         await getReviewsByUrl(establishment.link, establishmentId)
 
-      if (establishmentExtras?.latitude && establishmentExtras.longitude)
-        await this.prisma.establishment.update({
-          where: { id: establishment.id },
-          data: {
-            latitude: new Prisma.Decimal(establishmentExtras.latitude),
-            longitude: new Prisma.Decimal(establishmentExtras.longitude),
-          },
-        })
-
-      await this.createOrUpdateReviews(establishment.id, reviews)
+      if (
+        establishmentExtras &&
+        establishmentExtras.latitude &&
+        establishmentExtras.longitude
+      ) {
+        await this.updateEstablishmentCoordinates(
+          establishment,
+          establishmentExtras,
+        )
+      }
+      if (!reviews) return true
+      await this.createOrUpdateReviews(establishmentId, reviews)
 
       return true
     } catch (error) {
@@ -64,12 +67,26 @@ export class CreateReviewController {
     }
   }
 
+  private async updateEstablishmentCoordinates(
+    establishment: Establishment,
+    establishmentExtras: {
+      latitude: number
+      longitude: number
+    },
+  ): Promise<void> {
+    await this.prisma.establishment.update({
+      where: { id: establishment.id },
+      data: {
+        latitude: new Prisma.Decimal(establishmentExtras.latitude),
+        longitude: new Prisma.Decimal(establishmentExtras.longitude),
+      },
+    })
+  }
+
   private async createOrUpdateReviews(
     establishmentId: string,
-    reviews?: IReviewReturn[],
+    reviews: IReviewReturn[],
   ): Promise<void> {
-    if (!reviews) return
-
     const reviewsByEstablishment = await this.prisma.review.findMany({
       where: { establishmentId },
     })
