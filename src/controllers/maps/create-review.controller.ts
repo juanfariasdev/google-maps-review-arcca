@@ -15,17 +15,8 @@ import { PrismaService } from 'src/prisma/prisma.services'
 import { z } from 'zod'
 
 const CreateReviewSchema = z.object({
-  url: z.string().url(),
+  establishmentId: z.string(),
 })
-
-// Definindo o tipo para os dados de um estabelecimento
-type EstablishmentData = {
-  id: string
-  name: string
-  link: string
-  latitude: number
-  longitude: number
-}
 
 type CreateReviewBodySchema = z.infer<typeof CreateReviewSchema>
 
@@ -37,22 +28,32 @@ export class CreateReviewController {
   @Post()
   @UsePipes(new ZodValidationPipe(CreateReviewSchema))
   async handle(@Body() body: CreateReviewBodySchema): Promise<boolean> {
-    const { url } = CreateReviewSchema.parse(body)
+    const { establishmentId } = CreateReviewSchema.parse(body)
 
+    const establishment = await this.prisma.establishment.findUnique({
+      where: { id: establishmentId },
+    })
+
+    if (!establishment) {
+      throw new HttpException(
+        'Estabelecimento não encontrado.',
+        HttpStatus.NOT_FOUND,
+      )
+    }
     try {
-      const { establishment, reviews } = await getReviewsByUrl(url)
+      const { establishment: establishmentExtras, reviews } =
+        await getReviewsByUrl(establishment.link, establishmentId)
 
-      if (!establishment) {
-        throw new HttpException(
-          'Estabelecimento não encontrado.',
-          HttpStatus.NOT_FOUND,
-        )
-      }
+      if (establishmentExtras?.latitude && establishmentExtras.longitude)
+        await this.prisma.establishment.update({
+          where: { id: establishment.id },
+          data: {
+            latitude: new Prisma.Decimal(establishmentExtras.latitude),
+            longitude: new Prisma.Decimal(establishmentExtras.longitude),
+          },
+        })
 
-      const establishmentCreated =
-        await this.createOrUpdateEstablishment(establishment)
-
-      await this.createOrUpdateReviews(establishmentCreated.id, reviews)
+      await this.createOrUpdateReviews(establishment.id, reviews)
 
       return true
     } catch (error) {
@@ -61,27 +62,6 @@ export class CreateReviewController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       )
     }
-  }
-
-  private async createOrUpdateEstablishment(establishment: EstablishmentData) {
-    const { id, name, link, latitude, longitude } = establishment
-
-    return this.prisma.establishment.upsert({
-      where: { id },
-      create: {
-        id,
-        name,
-        link,
-        latitude: new Prisma.Decimal(latitude),
-        longitude: new Prisma.Decimal(longitude),
-      },
-      update: {
-        name,
-        link,
-        latitude: new Prisma.Decimal(latitude),
-        longitude: new Prisma.Decimal(longitude),
-      },
-    })
   }
 
   private async createOrUpdateReviews(

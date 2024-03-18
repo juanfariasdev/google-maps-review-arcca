@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { AppController } from './app.controller'
-import { AppService } from './app.service'
+
 import { AuthModule } from './auth/auth.module'
+import { CreateEstablishmentController } from './controllers/maps/create-establishment.controller'
 import { CreateReviewController } from './controllers/maps/create-review.controller'
+import { ListAllEstablishmentController } from './controllers/maps/list-establishment.controller'
 import { AuthenticateController } from './controllers/user/authenticate-controller'
 import { CreateAccountController } from './controllers/user/create-account.controller'
 import { envSchema } from './env'
@@ -18,11 +19,12 @@ import { PrismaService } from './prisma/prisma.services'
     AuthModule,
   ],
   controllers: [
-    AppController,
     CreateAccountController,
     AuthenticateController,
+    CreateEstablishmentController,
+    ListAllEstablishmentController,
     CreateReviewController,
   ],
-  providers: [AppService, PrismaService],
+  providers: [PrismaService],
 })
 export class AppModule {}

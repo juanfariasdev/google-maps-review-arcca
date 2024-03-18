@@ -6,9 +6,6 @@ import axios, { AxiosResponse } from 'axios'
 export interface IReviewReturn extends Prisma.ReviewCreateInput {}
 
 interface IEstablishiment {
-  id: string
-  link: string
-  name: string
   latitude: number
   longitude: number
 }
@@ -48,7 +45,10 @@ class GoogleReviewService {
     private responseParser: ResponseParser,
   ) {}
 
-  async fetchReviews(url: string): Promise<IReturnGetViews> {
+  async fetchReviews(
+    url: string,
+    establishmentId: string,
+  ): Promise<IReturnGetViews> {
     let token: string | null = null
     const reviews: IReviewReturn[] = []
     let establishment: IEstablishiment | null = null
@@ -79,13 +79,10 @@ class GoogleReviewService {
         for (const reviewItem of reviewArray) {
           const [item] = reviewItem
 
-          if (!establishment?.name) {
+          if (!establishment?.latitude) {
             const location = item[2][2][0][1][8][0]
 
             establishment = {
-              id: '2393beb4-8d1d-445d-a158-a119bfc982d4',
-              link: 'https://google.com',
-              name: item[2][2][0][1][21][3][7][0],
               latitude: location[2],
               longitude: location[1],
             }
@@ -106,7 +103,7 @@ class GoogleReviewService {
                 .replaceAll(/\n/g, ' ') ?? null,
             establishment: {
               connect: {
-                id: establishment.id,
+                id: establishmentId,
               },
             },
 
@@ -144,12 +141,15 @@ class GoogleReviewService {
 }
 
 // Função para obter avaliações por URL
-export async function getReviewsByUrl(url: string): Promise<IReturnGetViews> {
+export async function getReviewsByUrl(
+  url: string,
+  establishmentId: string,
+): Promise<IReturnGetViews> {
   const tokenInserter = new TokenInserter()
   const responseParser = new JsonResponseParser()
   const reviewService = new GoogleReviewService(tokenInserter, responseParser)
 
-  const reviews = await reviewService.fetchReviews(url)
+  const reviews = await reviewService.fetchReviews(url, establishmentId)
 
   return reviews
 }
