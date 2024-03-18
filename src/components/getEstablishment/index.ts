@@ -1,9 +1,9 @@
 /* eslint-disable dot-notation */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import puppeteer from 'puppeteer'
+import puppeteer, { Page } from 'puppeteer'
 
-async function waitForSelectorWithDelay(page, selector) {
-  const timeout = 500 // 0.5 segundos
+async function waitForSelectorWithDelay(page: Page, selector) {
+  const timeout = 1000 // 0.5 segundos
   await page.waitForSelector(selector, { timeout })
   await new Promise((resolve) => setTimeout(resolve, timeout))
 }
@@ -31,7 +31,7 @@ async function scrollReviews(page) {
   await waitForSelectorWithDelay(page, selector)
   await page.evaluate(() => {
     const reviews = document.querySelector('div[jslog^="26354"]')
-    if (reviews) reviews.scrollTo(0, 500)
+    if (reviews) reviews.scrollTo(0, 5000)
   })
 }
 
@@ -56,10 +56,12 @@ export async function getEstablishment(url: string): Promise<IMap | null> {
     page.on('request', (request) => {
       requests.push(request.url())
     })
-
+    await page.waitForNavigation()
     await clickOnReviewsButton(page)
+    await page.waitForNavigation()
     await clickOnOrganizeButton(page)
     await clickOnNewestButton(page)
+    await page.waitForNavigation()
     await scrollReviews(page)
     await scrollReviews(page)
     await scrollReviews(page)
