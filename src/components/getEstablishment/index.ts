@@ -1,32 +1,25 @@
-/* eslint-disable dot-notation */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import puppeteer, { Page } from 'puppeteer'
+import { getReviewsByUrl } from '../getReviews'
 
-async function waitForSelectorWithDelay(page: Page, selector) {
-  const timeout = 1000 // 0.5 segundos
-  await page.waitForSelector(selector, { timeout })
-  await new Promise((resolve) => setTimeout(resolve, timeout))
+async function waitForSelectorWithDelay(
+  page: Page,
+  selector: string,
+  timeout: number = 1000,
+) {
+  try {
+    await page.waitForSelector(selector, { timeout })
+    await new Promise((resolve) => setTimeout(resolve, timeout)) // Aguarda um tempo adicional após o carregamento do seletor
+  } catch (error) {
+    throw new Error(`Timeout ao aguardar o seletor: ${selector}`)
+  }
 }
 
-async function clickOnReviewsButton(page) {
-  const selector = 'button[jslog^="145620"]'
+async function clickAndWait(page: Page, selector: string) {
   await waitForSelectorWithDelay(page, selector)
   await page.click(selector)
 }
 
-async function clickOnOrganizeButton(page) {
-  const selector = 'button[jslog^="59550"]'
-  await waitForSelectorWithDelay(page, selector)
-  await page.click(selector)
-}
-
-async function clickOnNewestButton(page) {
-  const selector = 'div[vet^="25740"]'
-  await waitForSelectorWithDelay(page, selector)
-  await page.click(selector)
-}
-
-async function scrollReviews(page) {
+async function scrollReviews(page: Page) {
   const selector = 'div[jslog^="26354"]'
   await waitForSelectorWithDelay(page, selector)
   await page.evaluate(() => {
@@ -38,55 +31,64 @@ async function scrollReviews(page) {
 interface IMap {
   id: string
   name: string
-  link: string
+  link: string | null
 }
 
 export async function getEstablishment(url: string): Promise<IMap | null> {
-  const requests: any[] = []
-
   try {
+    console.log('Iniciou a procura do estabelecimento pelo link: ', url)
+    let urlLink: string | null = null
+    const urlLinks: string[] = []
     const browser = await puppeteer.launch({ headless: true })
     const page = await browser.newPage()
-    await page.setViewport({
-      width: 900,
-      height: 1800,
-    })
+    await page.setViewport({ width: 900, height: 1800 })
     await page.goto(url)
+    await page.waitForNavigation()
 
-    page.on('request', (request) => {
-      requests.push(request.url())
+    page.on('response', async (response) => {
+      const urlResponse = response.url()
+      urlLinks.push(urlResponse)
     })
+
+    await clickAndWait(page, 'button[jslog^="145620"]')
     await page.waitForNavigation()
-    await clickOnReviewsButton(page)
+    await clickAndWait(page, 'button[jslog^="59550"]')
+    await clickAndWait(page, 'div[vet^="25740"]')
     await page.waitForNavigation()
-    await clickOnOrganizeButton(page)
-    await clickOnNewestButton(page)
-    await page.waitForNavigation()
+
     await scrollReviews(page)
     await scrollReviews(page)
     await scrollReviews(page)
 
-    // await browser.close()
-    const request = requests.find((url) =>
-      url.startsWith('https://www.google.com/maps/rpc/listugcposts'),
+    const appInitializationState = await page.evaluate(
+      // eslint-disable-next-line dot-notation
+      () => window['APP_INITIALIZATION_STATE'],
     )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const business = appInitializationState?.[5]?.[3]?.[2]
+    const id = business?.[0] ?? ''
+    const name = business?.[1] ?? ''
 
-    // const businessItem: { id: string; name: string } = { id: '', name: '' }
+    console.log('APP_INITIALIZATION_STATE:', { id, name })
 
-    const appInitializationState = await page.evaluate(() => {
-      // Aqui acessamos a variável "APP_INITIALIZATION_STATE" no contexto da página
-      return window['APP_INITIALIZATION_STATE']
-    })
+    await browser.close()
 
-    const business = appInitializationState[5][3][2]
+    for (const link of urlLinks) {
+      if (link.includes('listugcposts')) {
+        const { reviews } = await getReviewsByUrl(link)
+        if (reviews && reviews.length > 0) {
+          console.log(link)
+          urlLink = link
 
-    const id = business[0]
-    const name = business[1]
+          break
+        }
+      }
+    }
 
-    console.log('APP_INITIALIZATION_STATE:', { id, name, link: request })
+    const establishment = { id, name, link: urlLink }
 
-    return { id, name, link: request }
+    console.log(establishment)
+
+    return establishment
   } catch (error) {
     console.error('Ocorreu um erro:', error)
     return null

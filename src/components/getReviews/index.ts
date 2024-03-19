@@ -5,13 +5,7 @@ import axios, { AxiosResponse } from 'axios'
 // Interfaces
 export interface IReviewReturn extends Prisma.ReviewCreateInput {}
 
-interface IEstablishiment {
-  latitude: number
-  longitude: number
-}
-
 export interface IReturnGetViews {
-  establishment?: IEstablishiment | null
   reviews?: IReviewReturn[]
 }
 
@@ -47,13 +41,12 @@ class GoogleReviewService {
 
   async fetchReviews(
     url: string,
-    establishmentId: string,
+    establishmentId?: string,
   ): Promise<IReturnGetViews> {
     let token: string | null = null
     const reviews: IReviewReturn[] = []
-    let establishment: IEstablishiment | null = null
-
     try {
+      console.log('Inicioiu a procura de reviews da url: ', url)
       do {
         const paginatedQuery = this.tokenInserter.insertToken(url, token)
 
@@ -79,15 +72,6 @@ class GoogleReviewService {
         for (const reviewItem of reviewArray) {
           const [item] = reviewItem
 
-          if (!establishment?.latitude) {
-            const location = item[2][2][0][1][8][0]
-
-            establishment = {
-              latitude: location[2],
-              longitude: location[1],
-            }
-            console.log(establishment)
-          }
           const customer = item[1][4][0]
 
           const review: IReviewReturn = {
@@ -123,6 +107,8 @@ class GoogleReviewService {
 
           reviews.push(review)
         }
+        console.log('Reviews encontrados: ', reviews.length)
+        if (!establishmentId) break
       } while (token)
     } catch (error) {
       // Lidar com todos os erros, incluindo erros de rede do axios
@@ -132,9 +118,9 @@ class GoogleReviewService {
       return {}
     }
 
-    console.log('Avaliações obtidas:', reviews.length)
+    console.log('--------------------')
+    console.log('Reviews totais obtidos:', reviews.length)
     return {
-      establishment,
       reviews,
     }
   }
@@ -143,13 +129,18 @@ class GoogleReviewService {
 // Função para obter avaliações por URL
 export async function getReviewsByUrl(
   url: string,
-  establishmentId: string,
+  establishmentId?: string,
 ): Promise<IReturnGetViews> {
   const tokenInserter = new TokenInserter()
   const responseParser = new JsonResponseParser()
   const reviewService = new GoogleReviewService(tokenInserter, responseParser)
 
-  const reviews = await reviewService.fetchReviews(url, establishmentId)
-
-  return reviews
+  try {
+    const reviews = await reviewService.fetchReviews(url, establishmentId)
+    return reviews
+  } catch (error) {
+    console.error('Erro ao obter avaliações por URL:', error)
+    // Lidar com o erro de acordo com a lógica da sua aplicação
+    return {}
+  }
 }

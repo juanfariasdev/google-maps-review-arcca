@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Body,
   Controller,
@@ -7,7 +8,6 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common'
-import { Establishment, Prisma } from '@prisma/client'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { IReviewReturn, getReviewsByUrl } from 'src/components/getReviews'
 import { ZodValidationPipe } from 'src/pipes/zod-validation-pipe'
@@ -27,7 +27,7 @@ export class CreateReviewController {
 
   @Post()
   @UsePipes(new ZodValidationPipe(CreateReviewSchema))
-  async handle(@Body() body: CreateReviewBodySchema): Promise<boolean> {
+  async handle(@Body() body: CreateReviewBodySchema): Promise<any> {
     const { establishmentId } = CreateReviewSchema.parse(body)
 
     const establishment = await this.prisma.establishment.findUnique({
@@ -40,47 +40,32 @@ export class CreateReviewController {
         HttpStatus.NOT_FOUND,
       )
     }
+    if (!establishment.linkReview) {
+      throw new HttpException(
+        'Estabelecimento não possúi o link dos reviews.',
+        HttpStatus.NOT_FOUND,
+      )
+    }
 
     try {
-      const { establishment: establishmentExtras, reviews } =
-        await getReviewsByUrl(establishment.linkReview, establishmentId)
+      const { reviews } = await getReviewsByUrl(
+        establishment.linkReview,
+        establishmentId,
+      )
 
-      if (
-        establishmentExtras &&
-        establishmentExtras.latitude &&
-        establishmentExtras.longitude
-      ) {
-        await this.updateEstablishmentCoordinates(
-          establishment,
-          establishmentExtras,
-        )
-      }
       if (!reviews) return true
       await this.createOrUpdateReviews(establishmentId, reviews)
 
-      return true
+      return {
+        establishment: establishment.name,
+        total: reviews.length,
+      }
     } catch (error) {
       throw new HttpException(
         'Erro ao processar a requisição.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       )
     }
-  }
-
-  private async updateEstablishmentCoordinates(
-    establishment: Establishment,
-    establishmentExtras: {
-      latitude: number
-      longitude: number
-    },
-  ): Promise<void> {
-    await this.prisma.establishment.update({
-      where: { id: establishment.id },
-      data: {
-        latitude: new Prisma.Decimal(establishmentExtras.latitude),
-        longitude: new Prisma.Decimal(establishmentExtras.longitude),
-      },
-    })
   }
 
   private async createOrUpdateReviews(
