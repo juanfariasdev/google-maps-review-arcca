@@ -1,5 +1,6 @@
 @baseUrl = http://localhost:3333
 @authToken = {{authenticate.response.body.access_token}}
+
 # @name create_account
 POST {{baseUrl}}/accounts
 Content-Type: application/json
@@ -33,7 +34,7 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-   "establishmentId": "0x9bd5b81cec9b05:0xc9b595f28b3ca216"
+   "establishmentId": "0x94dfb90392fe44d9:0xea16f3509e60fe5"
 }
 
 ###
@@ -45,13 +46,13 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-   "url": "https://maps.app.goo.gl/MQz1txFgBSa3nvBi9"
+   "url": "https://maps.app.goo.gl/nqsABVSeTCiHbJ327"
 }
 
 ###
 
 # @name list_all_establishment
 
-GET {{baseUrl}}/establishment
+GET {{baseUrl}}/establishment?id=0x9bd51fff4cc717:0x930f8a469526651c
 Content-Type: application/json
 Authorization: Bearer {{authToken}}

@@ -3,6 +3,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import { Establishment } from '@prisma/client'
@@ -16,9 +17,10 @@ export class ListAllEstablishmentController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  async handle(): Promise<Establishment[]> {
+  async handle(@Query('id') id?: string): Promise<Establishment[]> {
     try {
       return await this.prisma.establishment.findMany({
+        where: { id },
         include: {
           reviews: {
             include: {
