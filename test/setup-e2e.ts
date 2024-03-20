@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
-import { execSync } from 'child_process'
 import { randomUUID } from 'crypto'
 import 'dotenv/config'
+import { execSync } from 'node:child_process'
 
 const prisma = new PrismaClient()
 
@@ -11,7 +11,7 @@ function generateUniqueDatabaseUrl(schemaId: string) {
   }
   const url = new URL(process.env.DATABASE_URL)
 
-  url.searchParams.set('schemaId', schemaId)
+  url.searchParams.set('schema', schemaId)
 
   return url.toString()
 }
